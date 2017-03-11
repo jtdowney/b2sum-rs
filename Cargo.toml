@@ -1,0 +1,14 @@
+[package]
+name = "b2sum"
+version = "0.1.0"
+authors = ["John Downey <jdowney@gmail.com>"]
+description = "Rust clone of the BLAKE2b checksum utility in GNU coreutils"
+repository = "https://github.com/jtdowney/b2sum-rs"
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
+docopt = "0.7.0"
+error-chain = "0.9.0"
+rust-crypto = "0.2.36"
+rustc-serialize = "0.3.22"
