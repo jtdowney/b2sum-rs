@@ -1,5 +1,8 @@
 # b2sum-rs
 
+[![Build Status](https://travis-ci.org/jtdowney/b2sum-rs.svg?branch=master)](https://travis-ci.org/jtdowney/b2sum-rs)
+[![](https://img.shields.io/crates/v/b2sum.svg)](https://crates.io/crates/b2sum)
+
 Rust clone of the BLAKE2b checksum utility in GNU coreutils.
 
 ## Install
