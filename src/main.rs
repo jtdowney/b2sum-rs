@@ -1,6 +1,6 @@
 #![recursion_limit = "1024"]
 
-extern crate crypto;
+extern crate blake2_rfc;
 #[macro_use]
 extern crate error_chain;
 extern crate rustc_serialize;
@@ -9,15 +9,16 @@ extern crate docopt;
 mod errors {
     error_chain! {
         foreign_links {
+            Fmt(::std::fmt::Error);
             Io(::std::io::Error);
         }
     }
 }
 
-use crypto::blake2b::Blake2b;
-use crypto::digest::Digest;
+use blake2_rfc::blake2b::Blake2b;
 use docopt::Docopt;
 use errors::*;
+use std::fmt::Write;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read};
 use std::path::Path;
@@ -81,12 +82,17 @@ fn hash_reader<R: Read>(length: usize, mut reader: R) -> Result<String> {
     loop {
         match reader.read(&mut buffer) {
             Ok(0) => break,
-            Ok(c) => digest.input(&buffer[..c]),
+            Ok(c) => digest.update(&buffer[..c]),
             Err(e) => bail!(e),
         }
     }
 
-    let result = digest.result_str();
+    let output = digest.finalize();
+    let mut result = String::with_capacity(length * 2);
+    for &b in output.as_bytes() {
+        write!(&mut result, "{:x}", b)?;
+    }
+
     Ok(result)
 }
 
