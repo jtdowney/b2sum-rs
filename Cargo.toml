@@ -1,6 +1,6 @@
 [package]
 name = "b2sum"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["John Downey <jdowney@gmail.com>"]
 description = "Rust clone of the BLAKE2b checksum utility in GNU coreutils"
 repository = "https://github.com/jtdowney/b2sum-rs"
