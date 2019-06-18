@@ -3,8 +3,9 @@
 extern crate blake2_rfc;
 #[macro_use]
 extern crate error_chain;
-extern crate rustc_serialize;
 extern crate docopt;
+#[macro_use]
+extern crate serde;
 
 mod errors {
     error_chain! {
@@ -55,7 +56,7 @@ should be a former output of this program.  The default mode is to print
 a line with checksum and name for each FILE.
 ";
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 struct Args {
     arg_filename: Vec<String>,
     flag_check: bool,
@@ -223,9 +224,7 @@ fn hash_args(args: Args) -> Result<i32> {
 quick_main!(run);
 
 fn run() -> Result<i32> {
-    let mut args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.decode())
-        .unwrap_or_else(|e| e.exit());
+    let mut args: Args = Docopt::new(USAGE).and_then(|d| d.deserialize()).unwrap_or_else(|e| e.exit());
 
     if args.flag_version {
         print_version();
