@@ -100,9 +100,7 @@ fn hash_file<P: AsRef<Path>>(length: usize, path: P) -> Result<String> {
 }
 
 fn split_check_line(line: &str) -> Result<(&str, &str)> {
-    let hash_length = line.chars()
-        .position(|c| !c.is_digit(16))
-        .unwrap_or(0);
+    let hash_length = line.chars().position(|c| !c.is_digit(16)).unwrap_or(0);
     if hash_length < 2 || hash_length % 2 != 0 || hash_length > 128 {
         bail!("Invalid hash length: {}", hash_length);
     }
@@ -169,7 +167,6 @@ fn check_input<R: BufRead>(args: &Args, check_filename: &str, reader: R) -> Resu
                 println!("OK");
             } else {
                 println!("FAILED");
-
             }
         }
     }
@@ -246,8 +243,10 @@ mod tests {
     fn split_check_line_with_valid_line() {
         let line = "c0ae24f806df19d850565b234bc37afd5035e7536388290db9413c98578394313f38b093143ecfbc208425d54b9bfef0d9917a9e93910f7914a97e73fea23534  test";
         let (hash, filename) = split_check_line(line).unwrap();
-        assert_eq!("c0ae24f806df19d850565b234bc37afd5035e7536388290db9413c98578394313f38b093143ecfbc208425d54b9bfef0d9917a9e93910f7914a97e73fea23534",
-                   hash);
+        assert_eq!(
+            "c0ae24f806df19d850565b234bc37afd5035e7536388290db9413c98578394313f38b093143ecfbc208425d54b9bfef0d9917a9e93910f7914a97e73fea23534",
+            hash
+        );
         assert_eq!("test", filename);
     }
 
