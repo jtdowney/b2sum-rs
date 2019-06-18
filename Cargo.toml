@@ -9,7 +9,7 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
-blake2-rfc = "0.2.18"
+blake2b_simd = "0.5.2"
 docopt = "1.1.0"
 error-chain = "0.12.1"
 serde = { version = "1.0.92", features = ["derive"] }

@@ -11,7 +11,6 @@ mod errors {
     }
 }
 
-use blake2_rfc::blake2b::Blake2b;
 use docopt::Docopt;
 use error_chain::{bail, quick_main};
 use errors::*;
@@ -74,13 +73,15 @@ fn print_version() -> ! {
 }
 
 fn hash_reader<R: Read>(length: usize, mut reader: R) -> Result<String> {
-    let mut digest = Blake2b::new(length);
+    let mut digest = blake2b_simd::Params::new().hash_length(length).to_state();
     let mut buffer = [0; BUFFER_SIZE];
 
     loop {
         match reader.read(&mut buffer) {
             Ok(0) => break,
-            Ok(c) => digest.update(&buffer[..c]),
+            Ok(c) => {
+                digest.update(&buffer[..c]);
+            }
             Err(e) => bail!(e),
         }
     }
