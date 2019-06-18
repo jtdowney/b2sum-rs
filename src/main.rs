@@ -1,13 +1,8 @@
 #![recursion_limit = "1024"]
 
-extern crate blake2_rfc;
-#[macro_use]
-extern crate error_chain;
-extern crate docopt;
-#[macro_use]
-extern crate serde;
-
 mod errors {
+    use error_chain::error_chain;
+
     error_chain! {
         foreign_links {
             Fmt(::std::fmt::Error);
@@ -18,7 +13,9 @@ mod errors {
 
 use blake2_rfc::blake2b::Blake2b;
 use docopt::Docopt;
+use error_chain::{bail, quick_main};
 use errors::*;
+use serde::Deserialize;
 use std::fmt::Write;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read};

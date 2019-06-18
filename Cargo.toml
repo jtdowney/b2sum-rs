@@ -6,6 +6,7 @@ description = "Rust clone of the BLAKE2b checksum utility in GNU coreutils"
 repository = "https://github.com/jtdowney/b2sum-rs"
 readme = "README.md"
 license = "MIT"
+edition = "2018"
 
 [dependencies]
 blake2-rfc = "0.2.18"
