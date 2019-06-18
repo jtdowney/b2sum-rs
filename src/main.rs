@@ -22,7 +22,7 @@ use std::path::Path;
 use std::process;
 
 const BUFFER_SIZE: usize = 8 * 1024;
-const USAGE: &'static str = "
+const USAGE: &str = "
 Print or check BLAKE2 (512-bit) checksums.
 With no FILE, or when FILE is -, read standard input.
 
