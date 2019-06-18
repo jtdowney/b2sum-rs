@@ -90,7 +90,7 @@ fn hash_reader<R: Read>(length: usize, mut reader: R) -> Result<String> {
     let output = digest.finalize();
     let mut result = String::with_capacity(length * 2);
     for &b in output.as_bytes() {
-        write!(&mut result, "{:x}", b)?;
+        write!(&mut result, "{:02x}", b)?;
     }
 
     Ok(result)
@@ -288,5 +288,11 @@ mod tests {
         let line = "c0ae0  test";
         let result = split_check_line(line).unwrap_err();
         assert_eq!("Invalid hash length: 5", result.description());
+    }
+
+    #[test]
+    fn test_hash_formatting() {
+        let expected = "7ea59e7a000ec003846b6607dfd5f9217b681dc1a81b0789b464c3995105d93083f7f0a86fca01a1bed27e9f9303ae58d01746e3b20443480bea56198e65bfc5";
+        assert_eq!(expected, hash_reader(64, "hi\n".as_bytes()).unwrap());
     }
 }
