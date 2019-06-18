@@ -8,7 +8,7 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
-blake2-rfc = "0.2.17"
+blake2-rfc = "0.2.18"
 docopt = "1.1.0"
-error-chain = "0.10.0"
+error-chain = "0.12.1"
 serde = { version = "1.0.92", features = ["derive"] }
