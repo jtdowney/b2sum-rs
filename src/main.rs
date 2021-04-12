@@ -1,19 +1,5 @@
-#![recursion_limit = "1024"]
-
-mod errors {
-    use error_chain::error_chain;
-
-    error_chain! {
-        foreign_links {
-            Fmt(::std::fmt::Error);
-            Io(::std::io::Error);
-        }
-    }
-}
-
 use docopt::Docopt;
-use error_chain::{bail, quick_main};
-use errors::*;
+use eyre::bail;
 use serde::Deserialize;
 use std::fmt::Write;
 use std::fs::File;
@@ -72,7 +58,7 @@ fn print_version() -> ! {
     process::exit(0)
 }
 
-fn hash_reader<R: Read>(length: usize, mut reader: R) -> Result<String> {
+fn hash_reader<R: Read>(length: usize, mut reader: R) -> eyre::Result<String> {
     let mut digest = blake2b_simd::Params::new().hash_length(length).to_state();
     let mut buffer = [0; BUFFER_SIZE];
 
@@ -95,12 +81,12 @@ fn hash_reader<R: Read>(length: usize, mut reader: R) -> Result<String> {
     Ok(result)
 }
 
-fn hash_file<P: AsRef<Path>>(length: usize, path: P) -> Result<String> {
+fn hash_file<P: AsRef<Path>>(length: usize, path: P) -> eyre::Result<String> {
     let file = File::open(path)?;
     hash_reader(length, file)
 }
 
-fn split_check_line(line: &str) -> Result<(&str, &str)> {
+fn split_check_line(line: &str) -> eyre::Result<(&str, &str)> {
     let hash_length = line.chars().position(|c| !c.is_digit(16)).unwrap_or(0);
     if hash_length < 2 || hash_length % 2 != 0 || hash_length > 128 {
         bail!("Invalid hash length: {}", hash_length);
@@ -117,7 +103,7 @@ fn split_check_line(line: &str) -> Result<(&str, &str)> {
     Ok((hash, filename))
 }
 
-fn check_input<R: BufRead>(args: &Args, check_filename: &str, reader: R) -> Result<bool> {
+fn check_input<R: BufRead>(args: &Args, check_filename: &str, reader: R) -> eyre::Result<bool> {
     let print_result = !(args.flag_quiet || args.flag_status);
     let mut errors = false;
 
@@ -136,7 +122,7 @@ fn check_input<R: BufRead>(args: &Args, check_filename: &str, reader: R) -> Resu
                 }
 
                 if args.flag_warn {
-                    println!("{}:{}: {}", check_filename, i + 1, e.description())
+                    println!("{}:{}: {}", check_filename, i + 1, e)
                 }
 
                 continue;
@@ -146,11 +132,16 @@ fn check_input<R: BufRead>(args: &Args, check_filename: &str, reader: R) -> Resu
         let length = hash.len() / 2;
         let calculated_hash = match hash_file(length, filename) {
             Ok(h) => h,
-            Err(Error(ErrorKind::Io(ref e), _)) if e.kind() == io::ErrorKind::NotFound && args.flag_ignore_missing => continue,
             Err(e) => {
+                if let Some(io_err) = e.downcast_ref::<io::Error>() {
+                    if io_err.kind() == io::ErrorKind::NotFound && args.flag_ignore_missing {
+                        continue;
+                    }
+                }
+
                 errors = true;
                 if !args.flag_status {
-                    println!("{}: FAILED {}", filename, e.description());
+                    println!("{}: FAILED {}", filename, e);
                 }
 
                 continue;
@@ -175,7 +166,7 @@ fn check_input<R: BufRead>(args: &Args, check_filename: &str, reader: R) -> Resu
     Ok(errors)
 }
 
-fn check_args(args: Args) -> Result<i32> {
+fn check_args(args: Args) -> eyre::Result<i32> {
     let filename = args.arg_filename[0].as_str();
     let errors = if filename == "-" {
         let stdin = io::stdin();
@@ -191,7 +182,7 @@ fn check_args(args: Args) -> Result<i32> {
     Ok(code)
 }
 
-fn hash_args(args: Args) -> Result<i32> {
+fn hash_args(args: Args) -> eyre::Result<i32> {
     let length = args.flag_length / 8;
     for filename in args.arg_filename {
         let hash = if filename == "-" {
@@ -216,9 +207,9 @@ fn hash_args(args: Args) -> Result<i32> {
     Ok(0)
 }
 
-quick_main!(run);
+fn main() -> eyre::Result<()> {
+    color_eyre::install()?;
 
-fn run() -> Result<i32> {
     let mut args: Args = Docopt::new(USAGE).and_then(|d| d.deserialize()).unwrap_or_else(|e| e.exit());
 
     if args.flag_version {
@@ -229,11 +220,9 @@ fn run() -> Result<i32> {
         args.arg_filename.push("-".to_string());
     }
 
-    if args.flag_check {
-        check_args(args)
-    } else {
-        hash_args(args)
-    }
+    let result = if args.flag_check { check_args(args)? } else { hash_args(args)? };
+
+    process::exit(result)
 }
 
 #[cfg(test)]
@@ -255,35 +244,35 @@ mod tests {
     fn split_check_line_with_truncated_line() {
         let line = "c0ae24f806df19d850565b234bc37afd5035e7536388290db9413c98578394313f38b093143ecfbc208425d54b9bfef0d9917a9e93910f7914a97e73fea23534 ";
         let result = split_check_line(line).unwrap_err();
-        assert_eq!("Malformed line", result.description());
+        assert_eq!("Malformed line", result.to_string());
     }
 
     #[test]
     fn split_check_line_with_missing_filename() {
         let line = "c0ae24f806df19d850565b234bc37afd5035e7536388290db9413c98578394313f38b093143ecfbc208425d54b9bfef0d9917a9e93910f7914a97e73fea23534  ";
         let result = split_check_line(line).unwrap_err();
-        assert_eq!("Malformed line", result.description());
+        assert_eq!("Malformed line", result.to_string());
     }
 
     #[test]
     fn split_check_line_with_too_small_hash() {
         let line = "c  test";
         let result = split_check_line(line).unwrap_err();
-        assert_eq!("Invalid hash length: 1", result.description());
+        assert_eq!("Invalid hash length: 1", result.to_string());
     }
 
     #[test]
     fn split_check_line_with_too_long_hash() {
         let line = "c0ae24f806df19d850565b234bc37afd5035e7536388290db9413c98578394313f38b093143ecfbc208425d54b9bfef0d9917a9e93910f7914a97e73fea2353400  test";
         let result = split_check_line(line).unwrap_err();
-        assert_eq!("Invalid hash length: 130", result.description());
+        assert_eq!("Invalid hash length: 130", result.to_string());
     }
 
     #[test]
     fn split_check_line_with_non_even_hash() {
         let line = "c0ae0  test";
         let result = split_check_line(line).unwrap_err();
-        assert_eq!("Invalid hash length: 5", result.description());
+        assert_eq!("Invalid hash length: 5", result.to_string());
     }
 
     #[test]
