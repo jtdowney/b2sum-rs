@@ -1,13 +1,11 @@
 use docopt::Docopt;
 use eyre::bail;
 use serde::Deserialize;
-use std::fmt::Write;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Read};
+use std::io::{self, BufRead, BufReader};
 use std::path::Path;
 use std::process;
 
-const BUFFER_SIZE: usize = 8 * 1024;
 const USAGE: &str = "
 Print or check BLAKE2 (512-bit) checksums.
 With no FILE, or when FILE is -, read standard input.
@@ -58,32 +56,39 @@ fn print_version() -> ! {
     process::exit(0)
 }
 
-fn hash_reader<R: Read>(length: usize, mut reader: R) -> eyre::Result<String> {
+fn hash_reader<R>(length: usize, mut reader: R) -> eyre::Result<String>
+where
+    R: BufRead,
+{
     let mut digest = blake2b_simd::Params::new().hash_length(length).to_state();
-    let mut buffer = [0; BUFFER_SIZE];
 
     loop {
-        match reader.read(&mut buffer) {
-            Ok(0) => break,
-            Ok(c) => {
-                digest.update(&buffer[..c]);
+        let count = {
+            let data = reader.fill_buf()?;
+            if data.is_empty() {
+                break;
             }
-            Err(e) => bail!(e),
-        }
+
+            digest.update(data);
+            data.len()
+        };
+
+        reader.consume(count);
     }
 
     let output = digest.finalize();
-    let mut result = String::with_capacity(length * 2);
-    for &b in output.as_bytes() {
-        write!(&mut result, "{:02x}", b)?;
-    }
+    let result = output.to_hex().to_ascii_lowercase();
 
     Ok(result)
 }
 
-fn hash_file<P: AsRef<Path>>(length: usize, path: P) -> eyre::Result<String> {
+fn hash_file<P>(length: usize, path: P) -> eyre::Result<String>
+where
+    P: AsRef<Path>,
+{
     let file = File::open(path)?;
-    hash_reader(length, file)
+    let reader = BufReader::new(file);
+    hash_reader(length, reader)
 }
 
 fn split_check_line(line: &str) -> eyre::Result<(&str, &str)> {
@@ -103,7 +108,10 @@ fn split_check_line(line: &str) -> eyre::Result<(&str, &str)> {
     Ok((hash, filename))
 }
 
-fn check_input<R: BufRead>(args: &Args, check_filename: &str, reader: R) -> eyre::Result<bool> {
+fn check_input<R>(args: &Args, check_filename: &str, reader: R) -> eyre::Result<bool>
+where
+    R: BufRead,
+{
     let print_result = !(args.flag_quiet || args.flag_status);
     let mut errors = false;
 
@@ -170,8 +178,7 @@ fn check_args(args: Args) -> eyre::Result<i32> {
     let filename = args.arg_filename[0].as_str();
     let errors = if filename == "-" {
         let stdin = io::stdin();
-        let reader = stdin.lock();
-        check_input(&args, filename, reader)?
+        check_input(&args, filename, stdin.lock())?
     } else {
         let file = File::open(filename)?;
         let reader = BufReader::new(file);
@@ -187,7 +194,7 @@ fn hash_args(args: Args) -> eyre::Result<i32> {
     for filename in args.arg_filename {
         let hash = if filename == "-" {
             let stdin = io::stdin();
-            hash_reader(length, stdin)?
+            hash_reader(length, stdin.lock())?
         } else {
             hash_file(length, &filename)?
         };
@@ -211,7 +218,6 @@ fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
     let mut args: Args = Docopt::new(USAGE).and_then(|d| d.deserialize()).unwrap_or_else(|e| e.exit());
-
     if args.flag_version {
         print_version();
     }
@@ -221,7 +227,6 @@ fn main() -> eyre::Result<()> {
     }
 
     let result = if args.flag_check { check_args(args)? } else { hash_args(args)? };
-
     process::exit(result)
 }
 
