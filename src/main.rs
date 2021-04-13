@@ -215,7 +215,7 @@ fn hash_args(args: Args) -> eyre::Result<i32> {
 }
 
 fn main() -> eyre::Result<()> {
-    color_eyre::install()?;
+    stable_eyre::install()?;
 
     let mut args: Args = Docopt::new(USAGE).and_then(|d| d.deserialize()).unwrap_or_else(|e| e.exit());
     if args.flag_version {

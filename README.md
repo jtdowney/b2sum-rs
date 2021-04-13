@@ -40,3 +40,7 @@ The sums are computed as described in RFC 7693.  When checking, the input
 should be a former output of this program.  The default mode is to print
 a line with checksum and name for each FILE.
 ```
+
+## Minimum Supported Rust Version (MSRV)
+
+This crate is guaranteed to compile on stable Rust 1.42 and up. It might compile with older versions but that may change at any time.
