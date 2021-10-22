@@ -8,6 +8,11 @@ readme = "README.md"
 license = "MIT"
 edition = "2021"
 
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
 [dependencies]
 blake2b_simd = "0.5.11"
 docopt = "1.1.1"
